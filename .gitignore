@@ -1,0 +1,6 @@
+# Ekspor PDF notebook untuk pengumpulan tugas
+*.pdf
+
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
