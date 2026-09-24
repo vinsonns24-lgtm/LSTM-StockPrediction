@@ -63,6 +63,13 @@ Notebook ujian dibiarkan seperti saat dikumpulkan. Perbandingan dengan patokan d
 - Satu kali pembagian data latih dan uji. Hasil bisa berbeda di periode lain.
 - Tabel sepuluh varian arsitektur di notebook ujian dicatat dari percobaan terpisah. Kode varian V2 sampai V10 tidak disertakan di notebook, jadi angkanya tidak bisa diulang langsung dari repo ini.
 
+## Pelajaran dari proyek ini
+
+- Selalu bandingkan model dengan patokan naif sebelum menyebut ada perbaikan. Penurunan RMSE 66% dari baseline ternyata hanya membawa model kembali ke level patokan harga-kemarin.
+- Mengubah apa yang diprediksi berdampak jauh lebih besar daripada menambah layer, dropout, atau arah pemrosesan.
+- Untuk harga saham harian, harga sebelumnya hampir tidak memberi informasi tentang harga besok. Mengalahkan patokan butuh informasi lain seperti volume, saham lain, atau berita.
+- Simpan kode setiap eksperimen. Tabel sepuluh varian tidak bisa diulang dari repo karena kode varian lanjutan tidak ikut tersimpan.
+
 ## Menjalankan
 
 Notebook ujian ditulis untuk Google Colab dengan TensorFlow. `patokan_naif.ipynb` cukup dengan pandas, scikit-learn, dan matplotlib. Letakkan `AAPL.csv` dan `AMD.csv` (kolom `Date` dan `Close`, harga harian) di folder yang sama dengan notebook, lalu jalankan semua sel.
