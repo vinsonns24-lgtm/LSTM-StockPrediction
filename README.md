@@ -2,32 +2,40 @@
 
 Soal 1 ujian akhir mata kuliah **Deep Learning** (DTSC6007001), BINUS University.
 
-Model LSTM yang memprediksi harga penutupan (Close) satu hari ke depan untuk dua saham, **AAPL** (Apple) dan **AMD**, dari harga lima hari sebelumnya. Isi utamanya adalah eksperimen bertahap: apa yang benar-benar membuat model lebih baik, dan apa yang ternyata tidak.
+Model LSTM yang memprediksi harga penutupan (Close) satu hari ke depan untuk dua saham, **AAPL** (Apple) dan **AMD**, dari harga lima hari sebelumnya. Isi utamanya adalah eksperimen bertahap, lalu satu pertanyaan yang sering dilewatkan: apakah model itu lebih baik dari patokan paling sederhana, yaitu "harga besok sama dengan harga hari ini"?
+
+Jawabannya tidak. Mengubah target prediksi membawa LSTM dari jauh lebih buruk menjadi setara dengan patokan itu, tetapi tidak melampauinya.
 
 ![Prediksi dibanding harga aktual di data uji](saham-prediksi-vs-aktual.png)
 
 ## Hasil
 
-Data uji adalah satu tahun terakhir (April 2019 sampai April 2020), yang mencakup crash awal pandemi COVID-19.
+Data uji adalah satu tahun terakhir (April 2019 sampai April 2020, 253 hari), yang mencakup crash awal pandemi COVID-19.
 
 | Saham | Model | RMSE (USD) | MAE (USD) | MAPE |
 |---|---|---|---|---|
 | AAPL | Baseline: LSTM(50, ReLU), target harga | 18,85 | 12,44 | 4,66% |
-| AAPL | **Final: LSTM(50, tanh), target selisih harga** | **6,32** | **3,94** | **1,61%** |
+| AAPL | Final: LSTM(50, tanh), target selisih harga | 6,32 | 3,94 | 1,61% |
+| AAPL | **Patokan: harga besok = harga hari ini** | **6,29** | **3,84** | **1,57%** |
 | AMD | Baseline | 1,44 | 0,94 | 2,51% |
-| AMD | **Final** | **1,38** | **0,92** | **2,46%** |
+| AMD | Final | 1,38 | 0,92 | 2,46% |
+| AMD | **Patokan: harga besok = harga hari ini** | **1,38** | **0,91** | **2,44%** |
 
-## Temuan dari eksperimen
+![RMSE model LSTM dan dua patokan tanpa model di data uji](saham-patokan-naif.png)
 
-Sepuluh varian diuji pada kedua saham, supaya kesimpulannya tidak hanya kebetulan cocok untuk satu saham.
+## Temuan
 
-**Model yang lebih besar tidak membantu.** Menumpuk dua layer LSTM, menambah dropout, atau menambah layer Dense tidak konsisten membaik, dan varian paling kompleks justru paling buruk untuk AMD (RMSE 3,28 dibanding 1,44). Satu-satunya perubahan arsitektur yang membaik di kedua saham adalah yang paling sederhana: mengganti aktivasi ReLU menjadi tanh.
+**Baseline LSTM jauh lebih buruk dari menyalin harga kemarin.** RMSE baseline AAPL 18,85, tiga kali lipat patokan (6,29). Saat harga naik tajam di data uji, prediksi baseline melambung jauh di atas harga aktual.
 
-**Yang membantu adalah mengubah apa yang diprediksi.** Harga saham tidak stasioner. Uji Augmented Dickey-Fuller memberi p-value 0,999 untuk harga AAPL, sedangkan untuk selisih harga harian p-value-nya di bawah 0,001. Karena itu model dilatih memprediksi selisih terhadap harga hari terakhir di jendela input, lalu hasilnya dijumlahkan kembali dengan harga itu. Dengan arsitektur yang sama persis, RMSE AAPL turun dari 11,37 menjadi 6,32.
+**Mengubah target adalah satu-satunya perubahan yang berdampak besar.** Harga saham tidak stasioner. Uji Augmented Dickey-Fuller memberi p-value 0,999 untuk harga AAPL, sedangkan untuk selisih harga harian p-value-nya di bawah 0,001. Karena itu model dilatih memprediksi selisih terhadap harga hari terakhir di jendela input, lalu hasilnya dijumlahkan kembali dengan harga itu. Dengan arsitektur yang sama persis, RMSE AAPL turun dari 11,37 menjadi 6,32.
 
-**Perbaikan terbesar ada di saham yang paling tidak stasioner.** AAPL naik ratusan kali lipat selama periode data, sedangkan AMD bergerak naik turun. Perubahan target membantu AAPL jauh lebih banyak daripada AMD.
+**Tetapi model final tidak mengalahkan patokan.** RMSE-nya hampir sama dengan patokan harga-kemarin, dan MAE-nya sedikit lebih buruk di kedua saham (AAPL 3,94 dibanding 3,84, AMD 0,92 dibanding 0,91). Model praktis mempelajari selisih yang hampir nol, sehingga prediksinya hampir sama dengan harga terakhir. Ini sesuai sifat *random walk* harga saham: dari lima harga terakhir saja, harga besok tidak bisa ditebak lebih baik dari harga hari ini.
 
-**Error membesar saat pasar bergejolak.** Residual model tersebar di sekitar nol tanpa pola terhadap waktu, kecuali di akhir data uji. Pada periode crash Maret 2020, error AAPL melebar sampai sekitar 35 USD.
+**Model yang lebih besar tidak membantu.** Menumpuk dua layer LSTM, menambah dropout, atau menambah layer Dense tidak konsisten membaik, dan varian paling kompleks justru paling buruk untuk AMD (RMSE 3,28 dibanding 1,44). Perubahan arsitektur yang membaik di kedua saham hanya mengganti aktivasi ReLU menjadi tanh.
+
+**Error membesar saat pasar bergejolak.** Pada periode crash Maret 2020, error AAPL melebar sampai sekitar 35 USD.
+
+Pelajaran utamanya: model deret waktu harus selalu dibandingkan dengan patokan naif. Tanpa pembanding itu, penurunan RMSE 66% dari baseline terlihat seperti keberhasilan besar, padahal model hanya kembali ke level patokan.
 
 ## Cara kerja
 
@@ -38,14 +46,25 @@ Sepuluh varian diuji pada kedua saham, supaya kesimpulannya tidak hanya kebetula
 5. 10% terakhir data latih dipakai sebagai validasi untuk early stopping.
 6. Metrik dihitung setelah prediksi dikembalikan ke skala USD.
 
+## Isi repo
+
+```
+2802453572_NO1.ipynb        notebook ujian: EDA, uji stasioneritas, baseline, model final, evaluasi
+patokan_naif.ipynb          perbandingan dengan patokan harga-kemarin dan rata-rata 5 hari (tanpa TensorFlow)
+saham-prediksi-vs-aktual.png
+saham-patokan-naif.png
+```
+
+Notebook ujian dibiarkan seperti saat dikumpulkan. Perbandingan dengan patokan ditambahkan setelahnya di notebook terpisah, dengan pembagian data yang sama persis.
+
 ## Keterbatasan
 
-- Model belum dibandingkan dengan patokan paling sederhana untuk data saham, yaitu "harga besok sama dengan harga hari ini". Model final memprediksi selisih dari harga terakhir, sehingga perbandingan ini perlu untuk menunjukkan seberapa besar nilai tambahnya.
-- Hanya memakai harga penutupan. Volume, harga saham lain, dan berita tidak dipakai.
+- Hanya memakai harga penutupan. Untuk benar-benar mengalahkan patokan dibutuhkan informasi lain, misalnya volume, harga saham lain, atau berita.
 - Satu kali pembagian data latih dan uji. Hasil bisa berbeda di periode lain.
+- Tabel sepuluh varian arsitektur di notebook ujian dicatat dari percobaan terpisah. Kode varian V2 sampai V10 tidak disertakan di notebook, jadi angkanya tidak bisa diulang langsung dari repo ini.
 
 ## Menjalankan
 
-Notebook ditulis untuk Google Colab dengan TensorFlow. Letakkan `AAPL.csv` dan `AMD.csv` (kolom `Date` dan `Close`, harga harian) di folder yang sama dengan notebook, lalu jalankan semua sel.
+Notebook ujian ditulis untuk Google Colab dengan TensorFlow. `patokan_naif.ipynb` cukup dengan pandas, scikit-learn, dan matplotlib. Letakkan `AAPL.csv` dan `AMD.csv` (kolom `Date` dan `Close`, harga harian) di folder yang sama dengan notebook, lalu jalankan semua sel.
 
 Library: pandas, numpy, matplotlib, scikit-learn, statsmodels, TensorFlow/Keras.
