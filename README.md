@@ -27,7 +27,9 @@ Data uji adalah satu tahun terakhir (April 2019 sampai April 2020, 253 hari), ya
 
 **Baseline LSTM jauh lebih buruk dari menyalin harga kemarin.** RMSE baseline AAPL 18,85, tiga kali lipat patokan (6,29). Saat harga naik tajam di data uji, prediksi baseline melambung jauh di atas harga aktual.
 
-**Mengubah target adalah satu-satunya perubahan yang berdampak besar.** Harga saham tidak stasioner. Uji Augmented Dickey-Fuller memberi p-value 0,999 untuk harga AAPL, sedangkan untuk selisih harga harian p-value-nya di bawah 0,001. Karena itu model dilatih memprediksi selisih terhadap harga hari terakhir di jendela input, lalu hasilnya dijumlahkan kembali dengan harga itu. Dengan arsitektur yang sama persis, RMSE AAPL turun dari 11,37 menjadi 6,32.
+**Penyebabnya kemungkinan besar harga uji keluar dari rentang harga latih.** `MinMaxScaler` di-fit pada data latih, jadi harga tertinggi data latih (232 USD untuk AAPL) menjadi 1. Di data uji, 46% hari AAPL berada di atas harga itu, sampai skala 1,41. Baseline memprediksi harga absolut, jadi ia harus menebak angka di luar rentang yang pernah dilihatnya. Di AMD hanya 16% hari uji yang keluar rentang, dan baseline AMD memang hanya sedikit di atas patokan. Perhitungannya ada di `patokan_naif.ipynb`.
+
+**Mengubah target adalah satu-satunya perubahan yang berdampak besar.** Harga saham tidak stasioner. Uji Augmented Dickey-Fuller memberi p-value 0,999 untuk harga AAPL, sedangkan untuk selisih harga harian p-value-nya di bawah 0,001. Karena itu model dilatih memprediksi selisih terhadap harga hari terakhir di jendela input, lalu hasilnya dijumlahkan kembali dengan harga itu. Dengan arsitektur yang sama persis (LSTM 50 unit, aktivasi tanh), RMSE AAPL turun dari 11,37 menjadi 6,32. Selisih harian tetap kecil berapa pun level harganya, jadi masalah keluar rentang di atas ikut hilang.
 
 **Tetapi model final tidak mengalahkan patokan.** RMSE-nya hampir sama dengan patokan harga-kemarin, dan MAE-nya sedikit lebih buruk di kedua saham (AAPL 3,94 dibanding 3,84, AMD 0,92 dibanding 0,91). Model praktis mempelajari selisih yang hampir nol, sehingga prediksinya hampir sama dengan harga terakhir. Ini sesuai sifat *random walk* harga saham: dari lima harga terakhir saja, harga besok tidak bisa ditebak lebih baik dari harga hari ini.
 
@@ -49,17 +51,20 @@ Pelajaran utamanya: model deret waktu harus selalu dibandingkan dengan patokan n
 ## Isi repo
 
 ```
-2802453572_NO1.ipynb        notebook ujian: EDA, uji stasioneritas, baseline, model final, evaluasi
-patokan_naif.ipynb          perbandingan dengan patokan harga-kemarin dan rata-rata 5 hari (tanpa TensorFlow)
+lstm_ujian.ipynb            notebook ujian: EDA, uji stasioneritas, baseline, model final, evaluasi
+patokan_naif.ipynb          perbandingan dengan patokan naif dan analisis rentang harga (tanpa TensorFlow)
+AAPL.csv, AMD.csv           harga harian Desember 1980 / Maret 1980 sampai 1 April 2020
 saham-prediksi-vs-aktual.png
 saham-patokan-naif.png
 ```
 
-Notebook ujian dibiarkan seperti saat dikumpulkan. Perbandingan dengan patokan ditambahkan setelahnya di notebook terpisah, dengan pembagian data yang sama persis.
+Notebook ujian dibiarkan seperti saat dikumpulkan, termasuk komentar dan urutan eksekusinya. Hanya nama file-nya yang diganti. Perbandingan dengan patokan ditambahkan setelahnya di notebook terpisah, dengan pembagian data yang sama persis.
 
 ## Keterbatasan
 
 - Hanya memakai harga penutupan. Untuk benar-benar mengalahkan patokan dibutuhkan informasi lain, misalnya volume, harga saham lain, atau berita.
+- Varian arsitektur di notebook ujian dibandingkan dan dipilih berdasarkan RMSE di data uji, bukan di data validasi. Skor model final karena itu sedikit optimis. Dampaknya kecil di sini, karena model final pun tidak melampaui patokan.
+- Residual model final tidak sepenuhnya tanpa pola: rata-rata residual AAPL +0,82 USD, artinya model cenderung menebak sedikit terlalu rendah saat harga naik.
 - Satu kali pembagian data latih dan uji. Hasil bisa berbeda di periode lain.
 - Tabel sepuluh varian arsitektur di notebook ujian dicatat dari percobaan terpisah. Kode varian V2 sampai V10 tidak disertakan di notebook, jadi angkanya tidak bisa diulang langsung dari repo ini.
 
@@ -72,6 +77,10 @@ Notebook ujian dibiarkan seperti saat dikumpulkan. Perbandingan dengan patokan d
 
 ## Menjalankan
 
-Notebook ujian ditulis untuk Google Colab dengan TensorFlow. `patokan_naif.ipynb` cukup dengan pandas, scikit-learn, dan matplotlib. Letakkan `AAPL.csv` dan `AMD.csv` (kolom `Date` dan `Close`, harga harian) di folder yang sama dengan notebook, lalu jalankan semua sel.
+Notebook ujian ditulis untuk Google Colab dengan TensorFlow. `patokan_naif.ipynb` cukup dengan pandas, scikit-learn, dan matplotlib. Data `AAPL.csv` dan `AMD.csv` sudah ada di repo, di folder yang sama dengan notebook.
+
+## Data
+
+Dataset A yang diberikan untuk ujian. Format kolom dan rentang tanggalnya sama dengan file AAPL dan AMD di [Stock Market Dataset](https://www.kaggle.com/datasets/jacksoncrow/stock-market-dataset) di Kaggle (harga NASDAQ dari Yahoo Finance sampai 1 April 2020, lisensi CC0: Public Domain). Hanya kolom `Date` dan `Close` yang dipakai.
 
 Library: pandas, numpy, matplotlib, scikit-learn, statsmodels, TensorFlow/Keras.
